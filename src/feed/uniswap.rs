@@ -1,25 +1,25 @@
 use super::LiveEvent;
+use crate::config::{POOL_ADDRESS, SWAP_TOPIC, WSS_BLOCKCHAIN};
 use ethers::prelude::*;
 use ethers::types::{Filter, H160, H256, I256, U256};
 use std::str::FromStr;
 use tokio::sync::mpsc::Sender;
-use crate::config::{WSS_BLOCKCHAIN,POOL_ADDRESS,SWAP_TOPIC};
 
-
-pub async fn uniswap_feed(
-    sender: Sender<LiveEvent>
-) -> anyhow::Result<()> {
+pub async fn uniswap_feed(sender: Sender<LiveEvent>) -> anyhow::Result<()> {
     loop {
         match Ws::connect(WSS_BLOCKCHAIN).await {
             Ok(ws) => {
                 let provider = Provider::new(ws);
                 println!("CONNECTED TO: {}", WSS_BLOCKCHAIN);
 
-                if let Ok(mut stream) = provider.subscribe_logs(
-                    &Filter::new()
-                        .address(POOL_ADDRESS.parse::<H160>().unwrap())
-                        .topic0(H256::from_str(SWAP_TOPIC).unwrap())
-                ).await {
+                if let Ok(mut stream) = provider
+                    .subscribe_logs(
+                        &Filter::new()
+                            .address(POOL_ADDRESS.parse::<H160>().unwrap())
+                            .topic0(H256::from_str(SWAP_TOPIC).unwrap()),
+                    )
+                    .await
+                {
                     println!("SUBSCRIBED TO SWAP EVENTS");
 
                     // Loop Message Treatment
@@ -51,7 +51,7 @@ pub async fn uniswap_feed(
                 }
             }
             Err(e) => {
-                eprintln!("CANNOT CONNECT: {}s", e);
+                eprintln!("CANNOT CONNECT TO WEBSOCKET: {}", e);
             }
         }
 
@@ -59,7 +59,6 @@ pub async fn uniswap_feed(
         println!("UNISWAP FEED RESTARTING");
     }
 }
-
 
 // Helper pour décoder un int256 (complément à deux)
 fn parse_int256(bytes: &[u8]) -> I256 {

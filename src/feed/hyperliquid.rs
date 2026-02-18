@@ -1,19 +1,17 @@
 use super::LiveEvent;
+use crate::config::{COIN, WSS_HYPERLIQUID};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::Value;
 use serde_json::json;
 use tokio::sync::mpsc::Sender;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::protocol::Message;
-use crate::config::{WSS_HYPERLIQUID,COIN};
 
-pub async fn hyperliquid_feed(
-    sender: Sender<LiveEvent>,
-) -> anyhow::Result<()> {
+pub async fn hyperliquid_feed(sender: Sender<LiveEvent>) -> anyhow::Result<()> {
     loop {
         match connect_async(WSS_HYPERLIQUID).await {
             Ok(ws) => {
-                let (ws_stream,_) = ws;
+                let (ws_stream, _) = ws;
                 println!("CONNECTED TO: {}", WSS_HYPERLIQUID);
                 let (mut write, mut read) = ws_stream.split();
                 let subscribe_msg = json!({
@@ -27,8 +25,7 @@ pub async fn hyperliquid_feed(
                     eprintln!("ERROR IN SUBSCRIPTION: {}", e);
 
                     continue;
-                }
-                else {
+                } else {
                     println!("SUBSCRIBED TO HYPERLIQUID ORDERBOOK")
                 }
 
@@ -38,8 +35,10 @@ pub async fn hyperliquid_feed(
                         Ok(Message::Text(text)) => {
                             if let Ok(res) = serde_json::from_str::<Value>(&text) {
                                 if let (Some(time_u64), Some(Value::Array(l2_book))) = (
-                                    res.get("data").and_then(|d| d.get("time")).and_then(|t| t.as_u64()),
-                                    res.get("data").and_then(|k| k.get("levels"))
+                                    res.get("data")
+                                        .and_then(|d| d.get("time"))
+                                        .and_then(|t| t.as_u64()),
+                                    res.get("data").and_then(|k| k.get("levels")),
                                 ) {
                                     let event = LiveEvent::Hyperliquid {
                                         timestamp: time_u64,
